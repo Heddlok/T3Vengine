@@ -652,9 +652,9 @@ private:
                   << std::filesystem::current_path() << std::endl;
         
         // Corrected relative path for shaders, assuming CWD is project root
-        auto vertShaderCode = readFile("build/bin/shaders/vert.spv"); 
-        auto fragShaderCode = readFile("build/bin/shaders/frag.spv"); 
-
+        auto vertShaderCode = readFile("/Users/heddlok/Developer/IWEngine/shader_sources/vert.spv");
+        auto fragShaderCode = readFile("/Users/heddlok/Developer/IWEngine/shader_sources/frag.spv");
+    
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
