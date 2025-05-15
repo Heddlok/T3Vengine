@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.app/
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+
+# macOS specific
+.DS_Store
+*.xcuserdatad/
+
+# VS Code specific
+.vscode/
+
+# User-specific files (if any)
+# *.local
+# *.user
+
+# Log files
+*.log
+
+# Temporary files
+*~
+*.tmp
+*.swp
