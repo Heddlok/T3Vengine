@@ -1,40 +1,32 @@
 cmake_minimum_required(VERSION 3.24)
-
-# Export compile_commands.json for IDEs
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 project(T3Vengine LANGUAGES CXX)
 
 # Use C++23
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# SDL2 via pkg-config (macOS Homebrew or system)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
-include_directories(${SDL2_INCLUDE_DIRS})
-link_directories(${SDL2_LIBRARY_DIRS})
+# Find SDL2 (Homebrew’s SDL2Config.cmake should be available)
+find_package(SDL2 REQUIRED)
 
-# GLEW for OpenGL function loading
+# Find GLEW, GLM, OpenGL
 find_package(GLEW REQUIRED)
-
-# GLM for mathematics
 find_package(glm REQUIRED)
+find_package(OpenGL REQUIRED)
 
-# Gather all engine source files
+# Collect sources
 file(GLOB_RECURSE ENGINE_SOURCES
   ${CMAKE_SOURCE_DIR}/src/*.cpp
   ${CMAKE_SOURCE_DIR}/src/*.h
 )
 
-# Define the executable target
+# Define executable
 add_executable(T3Vengine ${ENGINE_SOURCES})
-target_compile_features(T3Vengine PUBLIC cxx_std_23)
 
 # Include directories
 target_include_directories(T3Vengine PRIVATE
-  ${CMAKE_SOURCE_DIR}/include
+  ${CMAKE_SOURCE_DIR}/include   # stb_image, tiny_obj_loader
   ${CMAKE_SOURCE_DIR}/src
   ${SDL2_INCLUDE_DIRS}
   ${GLEW_INCLUDE_DIRS}
@@ -43,26 +35,20 @@ target_include_directories(T3Vengine PRIVATE
 
 # Link libraries
 target_link_libraries(T3Vengine PRIVATE
-  ${SDL2_LIBRARIES}   # SDL2 headers & libraries
-  GLEW::GLEW          # GLEW OpenGL loader
-  glm::glm            # GLM mathematics
+  SDL2::SDL2          # core SDL2
+  SDL2::SDL2main      # SDL2 main shim
+  GLEW::GLEW          # GLEW loader
+  glm::glm            # GLM math
+  OpenGL::GL          # OpenGL
 )
 
-# Platform-specific OpenGL linkage
-if(APPLE)
-  find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
-  target_link_libraries(T3Vengine PRIVATE
-    ${COCOA_FRAMEWORK}
-    "-framework OpenGL"
-  )
-elseif(WIN32)
-  target_link_libraries(T3Vengine PRIVATE opengl32)
-else()
-  find_package(OpenGL REQUIRED)
-  target_link_libraries(T3Vengine PRIVATE OpenGL::GL)
-endif()
-
-# Pass shader directory into the code
+# Pass shader and asset dirs into code
 target_compile_definitions(T3Vengine PRIVATE
   SHADER_DIR="${CMAKE_SOURCE_DIR}/shader_sources"
+  ASSET_DIR="${CMAKE_SOURCE_DIR}/assets"
 )
+
+# On macOS you might need frameworks for SDL2; these are automatically
+# added by SDL2::SDL2, but if you still see missing symbols, uncomment:
+# find_library(COCOA Cocoa)
+# target_link_libraries(T3Vengine PRIVATE ${COCOA})
