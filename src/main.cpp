@@ -16,6 +16,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #ifndef ASSET_DIR
 #define ASSET_DIR "assets"
 #endif
@@ -38,6 +41,28 @@ static std::string readFile(const std::string& path) {
     std::ifstream in{path};
     if (!in) throw std::runtime_error("Failed to open file: " + path);
     return std::string{std::istreambuf_iterator<char>(in), {}};
+}
+
+// --- Texture loader helper ---
+GLuint loadTexture(const std::string& path) {
+    int w, h, n;
+    unsigned char* data = stbi_load(path.c_str(), &w, &h, &n, 0);
+    if (!data) {
+        std::cerr << "Failed to load texture: " << path << std::endl;
+        return 0;
+    }
+    GLenum format = (n == 4) ? GL_RGBA : GL_RGB;
+    GLuint texID;
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    stbi_image_free(data);
+    return texID;
 }
 
 struct Camera {
@@ -119,6 +144,11 @@ private:
     GLint                     uAmbientLoc  = -1;
     GLint                     uLightDirLoc = -1;
 
+    // --- Floor textures ---
+    GLuint floorAlbedo    = 0;
+    GLuint floorNormal    = 0;
+    GLuint floorRoughness = 0;
+
     void initWindow() {
         std::cout << "Working directory: " << std::filesystem::current_path() << std::endl;
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -183,9 +213,10 @@ private:
 
         glUseProgram(program);
 
-        // bind albedo sampler to unit 0
-        GLint uAlbedoLoc = glGetUniformLocation(program, "uAlbedo");
-        glUniform1i(uAlbedoLoc, 0);
+        // Set texture sampler uniforms
+        glUniform1i(glGetUniformLocation(program, "uAlbedo"),    0);
+        glUniform1i(glGetUniformLocation(program, "uNormalMap"), 1);
+        glUniform1i(glGetUniformLocation(program, "uRoughMap"),  2);
 
         uModelLoc    = glGetUniformLocation(program, "uModel");
         uUseInstLoc  = glGetUniformLocation(program, "uUseInstancing");
@@ -241,6 +272,11 @@ private:
             camera.yaw   = glm::degrees(std::atan2(dz, dx));
             camera.pitch = -20.0f;
         }
+
+        // --- Load floor textures ---
+        floorAlbedo    = loadTexture(std::string(ASSET_DIR) + "/floor_diff.jpg");
+        floorNormal    = loadTexture(std::string(ASSET_DIR) + "/floor_normal.png");
+        floorRoughness = loadTexture(std::string(ASSET_DIR) + "/floor_rough.png");
     }
 
     void mainLoop() {
@@ -279,6 +315,14 @@ private:
             glUniform3fv  (glGetUniformLocation(program, "uViewPos"),       1, glm::value_ptr(camera.pos));
             glUniform3f   (glGetUniformLocation(program, "uLightColor"),     1.0f, 1.0f, 1.0f);
             glUniform3f   (glGetUniformLocation(program, "uObjectColor"),    0.5f, 0.5f, 0.5f);
+
+            // --- Bind floor textures before drawing the floor ---
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, floorAlbedo);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, floorNormal);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, floorRoughness);
 
             // draw floor
             glm::mat4 floorM = glm::translate(glm::mat4(1.0f),
