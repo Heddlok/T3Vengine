@@ -1,20 +1,34 @@
 #pragma once
 
-#include <GL/glew.h>
-#include <cstddef>
 #include <string>
+#include <vector>
+#include <glm/glm.hpp>
+#include <GL/glew.h>
 
-struct Mesh {
-    GLuint        VAO = 0;
-    GLuint        VBO = 0;
-    std::size_t   vertexCount = 0;
-
+class Mesh {
+public:
+    // Load a mesh from an OBJ file
     Mesh(const std::string& objPath);
     ~Mesh();
 
-    // Inline draw call
-    void draw() const {
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
-    }
+    // Draw without instancing (e.g., floor)
+    void drawPlain();
+
+    // Draw with instancing (e.g., walls)
+    void drawInstanced(GLsizei instanceCount);
+
+    // Upload per-instance model matrices
+    void setInstanceBuffer(const std::vector<glm::mat4>& instanceData);
+
+private:
+    // VAO for non-instanced draws
+    GLuint VAO_plain   = 0;
+    // VAO for instanced draws
+    GLuint VAO_inst    = 0;
+    // Vertex buffer for mesh data (positions, normals)
+    GLuint VBO         = 0;
+    // Instance buffer for model matrices
+    GLuint instanceVBO = 0;
+    // Number of vertices (triangle count * 3)
+    GLsizei vertexCount = 0;
 };
